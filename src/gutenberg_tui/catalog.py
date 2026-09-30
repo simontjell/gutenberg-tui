@@ -71,6 +71,7 @@ def _row_to_book(row: sqlite3.Row) -> Book:
 _TOKEN = re.compile(r"\w+", re.UNICODE)
 
 _COLUMNS = "id, title, language, authors, subjects, bookshelves, issued"
+_BOOK_COLUMNS = ", ".join(f"b.{column}" for column in _COLUMNS.split(", "))
 
 
 def connect(db_path: Path | str) -> sqlite3.Connection:
@@ -128,15 +129,17 @@ class Catalog:
         if not tokens:
             return self.recent(limit)
         match = " ".join(f'"{token}"*' for token in tokens)
+        # Rank inside the FTS query itself: a correlated bm25() subquery
+        # would run one full-text match per row and freeze on short prefixes.
         rows = self.conn.execute(
             f"""
-            SELECT {_COLUMNS} FROM books
-            WHERE id IN (SELECT rowid FROM books_fts WHERE books_fts MATCH ?)
-            ORDER BY (SELECT bm25(books_fts, 10.0, 5.0, 1.0, 1.0)
-                      FROM books_fts WHERE books_fts.rowid = books.id AND books_fts MATCH ?)
+            SELECT {_BOOK_COLUMNS}
+            FROM books_fts JOIN books b ON b.id = books_fts.rowid
+            WHERE books_fts MATCH ?
+            ORDER BY bm25(books_fts, 10.0, 5.0, 1.0, 1.0)
             LIMIT ?
             """,
-            (match, match, limit),
+            (match, limit),
         ).fetchall()
         return [_row_to_book(row) for row in rows]
 

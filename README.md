@@ -5,6 +5,8 @@ search the catalogue, read books in the terminal, search inside a book, and
 keep a personal shelf of books saved locally. No account or login is involved;
 the app only makes plain HTTP GETs against gutenberg.org.
 
+![Searching for Jane Austen, reading and searching inside a book, the shelf and the browse screen](docs/demo.gif)
+
 ## Install and run
 
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
